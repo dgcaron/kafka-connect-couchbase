@@ -1,24 +1,25 @@
+:idprefix:
+:idseparator: -
+
 Reference of the source connector options.
 
-[[database]]
-Database
-~~~~~~~~
+== Database
 
-`connection.cluster_address`
+=== `connection.cluster_address`
 
 Couchbase Cluster addresses to listen (use comma to specify several).
 
 * Type: list
 * Importance: high
 
-`connection.bucket`
+=== `connection.bucket`
 
 Couchbase bucket name.
 
 * Type: string
 * Importance: high
 
-`connection.username`
+=== `connection.username`
 
 Couchbase username for Couchbase Server 5.0 and later.
 
@@ -26,7 +27,7 @@ Couchbase username for Couchbase Server 5.0 and later.
 * Importance: high
 * Default: the bucket name specified by `connection.bucket`
 
-`connection.password`
+=== `connection.password`
 
 Couchbase password. For Couchbase Server versions prior to 5.0 this is
 the bucket password. For versions 5.0 and later, this is the password
@@ -36,14 +37,14 @@ associated with `connection.username`.
 * Importance: low
 * Default: `""`
 
-`connection.timeout.ms`
+=== `connection.timeout.ms`
 
 Connection timeout in milliseconds.
 
 * Type: long
 * Importance: low
 
-`connection.ssl.enabled`
+=== `connection.ssl.enabled`
 
 Use SSL to connect to Couchbase. This feature only available in
 Couchbase Enterprise.
@@ -54,14 +55,14 @@ Couchbase Enterprise.
 * Dependents: `connection.ssl.keystore.location`,
 `connection.ssl.keystore.password`
 
-`connection.ssl.keystore.location`
+=== `connection.ssl.keystore.location`
 
 The location of the key store file.
 
 * Type: string
 * Importance: low
 
-`connection.ssl.keystore.password`
+=== `connection.ssl.keystore.password`
 
 The password of the private key in the key store file.
 
@@ -69,18 +70,16 @@ The password of the private key in the key store file.
 * Importance: low
 * Default: `""`
 
-[[connector]]
-Connector
-~~~~~~~~~
+== Connector
 
-`topic.name`
+=== `topic.name`
 
 Name of the Kafka topic to publish data to.
 
 * Type: string
 * Importance: high
 
-`use_snapshots`
+=== `use_snapshots`
 
 If true, it will only commit into Kafka when full snapshot from
 Couchbase received.
@@ -89,7 +88,7 @@ Couchbase received.
 * Importance: low
 * Default: `false`
 
-`dcp.message.converter.class`
+=== `dcp.message.converter.class`
 
 The class name of the message converter to use.
 
@@ -98,7 +97,7 @@ The class name of the message converter to use.
 * Default:
 `"com.couchbase.connect.kafka.handler.source.DefaultSchemaSourceHandler"`
 
-`event.filter.class`
+=== `event.filter.class`
 
 The class name of the event filter to use.
 
@@ -106,7 +105,7 @@ The class name of the event filter to use.
 * Importance: low
 * Default: `"com.couchbase.connect.kafka.filter.AllPassFilter"`
 
-`couchbase.stream_from`
+=== `couchbase.stream_from`
 
 The point in Couchbase history to start streaming from.
 
@@ -125,7 +124,7 @@ state)
 * Importance: low
 * Default: `"SAVED_OFFSET_OR_BEGINNING"`
 
-`couchbase.log_redaction`
+=== `couchbase.log_redaction`
 
 Optionally tag sensitive values in the log output for later redaction.
 
@@ -139,29 +138,31 @@ Optionally tag sensitive values in the log output for later redaction.
 * Importance: low
 * Default: `"NONE"`
 
-`couchbase.compression`
+=== `couchbase.compression`
 
-To reduce bandwidth usage, Couchbase Server 4.5 and later can send
+To reduce bandwidth usage, Couchbase Server 5.5 and later can send
 documents to the connector in compressed form. (Messages are always
 published to the Kafka topic in uncompressed form, regardless of this
-setting.)
+setting.) If the requested mode is not supported by your version of
+Couchbase Server, compression will be disabled.
 
 * Possible values:
-** DISABLED - No compression.
-** ENABLED - Couchbase Server decides whether to use compression on a
-per-document basis. For Couchbase 5.5 and later, the document will be
-sent compressed if the server already has easy access to the compressed
-form. For older server versions, this mode is equivalent to FORCED, and
-may increase server CPU load.
-** FORCED - Compression is used for every document, unless compressed
-size is greater than uncompressed size.
+** `ENABLED` - (default) Couchbase Server decides whether to use compression
+on a per-document basis, depending on whether the compressed form of the
+document is readily available. Select this mode to prioritize Couchbase Server
+performance and reduced bandwidth usage (recommended). *Requires Couchbase Server 5.5 or later*.
+** `DISABLED` - No compression. Select this mode to prioritize reduced CPU load
+for the Kafka connector.
+** `FORCED` - Compression is used for every document, unless compressed
+size is greater than uncompressed size. Select this mode to prioritize bandwidth
+usage reduction above all else. *Requires Couchbase Server 5.5 or later*.
 
-* Since: 3.2.3
+* Since: 3.3.0
 * Type: string
 * Importance: low
-* Default: `"DISABLED"`
+* Default: `"ENABLED"`
 
-`couchbase.forceIPv4`
+=== `couchbase.forceIPv4`
 
 In a network environment that supports both IPv4 and IPv6, setting this property
 to `true` will force the use of IPv4 when resolving Couchbase Server hostnames.
@@ -171,12 +172,51 @@ to `true` will force the use of IPv4 when resolving Couchbase Server hostnames.
 * Importance: low
 * Default: `false`
 
-*Parent topic:* link:../../connectors/kafka-3.2/kafka-intro.html[Kafka
-Connector 3.2]
+=== `couchbase.persistence_polling_interval`
+
+The frequency at which the connector will poll Couchbase Server to determine
+which database changes are unlikely to be rolled back. A value of `0`
+disables polling and causes changes to be published to the Kafka topic as soon as they are received.
+
+NOTE: If polling is disabled, when rollbacks occur you are more likely to end up with events
+in the Kafka topic that do not match the actual database state, because
+they are from an "alternate timeline" in Couchbase Server's history.
+
+The longer the polling interval, the larger the flow control buffer required
+in order to maintain steady throughput, since events are buffered
+until persistence is confirmed.
+
+If present, the value must be `0` or an integer followed by a time unit:
+(`ms` = milliseconds, `s` = seconds)
+
+* Since: 3.4.0-beta.1 (*Uncommitted*; API may change in a patch release)
+* Type: string
+* Importance: low
+* Default: `"100ms"`
+
+=== `couchbase.flow_control_buffer`
+
+The amount of heap space to reserve for the flow control buffer.
+This is the amount of data Couchbase Server will push to the connector
+before awaiting acknowledgement that the data has been published to the Kafka topic.
+
+If present, the value must be an integer followed by a storage size unit:
+(`b` = bytes, `k` = kilobytes, `m` = megabytes, `g` = gigabytes)
+
+NOTE: This value must be smaller than the connect worker's heap size.
+To allocate more memory to the connect worker process,
+set the `KAFKA_HEAP_OPTS` environment variable before starting the worker.
+For example: `export KAFKA_HEAP_OPTS=-Xmx1024M`
+
+* Since: 3.4.0-beta.1 (*Uncommitted*; API may change in a patch release)
+* Type: string
+* Importance: low
+* Default: `"128m"`
+
+*Parent topic:* link:kafka-intro.html[Kafka Connector]
 
 *Previous topic:*
-link:../../connectors/kafka-3.2/quickstart.html[Quickstart]
+link:quickstart.html[Quickstart]
 
 *Next topic:*
-link:../../connectors/kafka-3.2/sink-configuration-options.html[Sink
-Configuration Options]
+link:sink-configuration-options.html[Sink Configuration Options]

@@ -25,6 +25,7 @@ import com.couchbase.client.dcp.config.DcpControl;
 import com.couchbase.client.dcp.message.DcpFailoverLogResponse;
 import com.couchbase.client.dcp.message.DcpMutationMessage;
 import com.couchbase.client.dcp.message.DcpSnapshotMarkerRequest;
+import com.couchbase.client.dcp.message.RollbackMessage;
 import com.couchbase.client.dcp.state.PartitionState;
 import com.couchbase.client.dcp.transport.netty.ChannelFlowController;
 import com.couchbase.client.deps.io.netty.buffer.ByteBuf;
@@ -33,12 +34,15 @@ import com.couchbase.connect.kafka.dcp.Message;
 import com.couchbase.connect.kafka.dcp.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.CompletableSubscriber;
+import rx.Subscription;
 import rx.functions.Action1;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class CouchbaseReader extends Thread {
     private static final Logger LOGGER = LoggerFactory.getLogger(CouchbaseReader.class);
@@ -54,7 +58,8 @@ public class CouchbaseReader extends Thread {
                            final BlockingQueue<Event> queue, BlockingQueue<Throwable> errorQueue, Short[] partitions,
                            final Map<Short, Long> partitionToSavedSeqno, final StreamFrom streamFrom,
                            final boolean useSnapshots, final boolean sslEnabled, final String sslKeystoreLocation,
-                           final String sslKeystorePassword, final CompressionMode compressionMode) {
+                           final String sslKeystorePassword, final CompressionMode compressionMode,
+                           long persistencePollingIntervalMillis, int flowControlBufferBytes) {
         this.snapshots = new ConcurrentHashMap<Short, Snapshot>(partitions.length);
         this.partitions = partitions;
         this.partitionToSavedSeqno = partitionToSavedSeqno;
@@ -66,9 +71,10 @@ public class CouchbaseReader extends Thread {
                 .bucket(bucket)
                 .username(username)
                 .password(password)
-                .controlParam(DcpControl.Names.CONNECTION_BUFFER_SIZE, 20480)
                 .controlParam(DcpControl.Names.ENABLE_NOOP, "true")
                 .compression(compressionMode)
+                .mitigateRollbacks(persistencePollingIntervalMillis, TimeUnit.MILLISECONDS)
+                .flowControl(flowControlBufferBytes)
                 .bufferAckWatermark(60)
                 .sslEnabled(sslEnabled)
                 .sslKeystoreFile(sslKeystoreLocation)
@@ -90,6 +96,32 @@ public class CouchbaseReader extends Thread {
                         }
                     }
                 }
+
+                if (RollbackMessage.is(event)) {
+                    final short partition = RollbackMessage.vbucket(event);
+                    final long seqno = RollbackMessage.seqno(event);
+
+                    LOGGER.warn("Rolling back partition {} to seqno {}", partition, seqno);
+
+                    // Careful, we're in the Netty IO thread, so must not await completion.
+                    client.rollbackAndRestartStream(partition, seqno)
+                            .subscribe(new CompletableSubscriber() {
+                                @Override
+                                public void onCompleted() {
+                                    LOGGER.info("Rollback for partition {} complete", partition);
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    LOGGER.error("Failed to roll back partition {} to seqno {}", partition, seqno, e);
+                                }
+
+                                @Override
+                                public void onSubscribe(Subscription d) {
+                                }
+                            });
+                }
+
                 flowController.ack(event);
                 event.release();
             }

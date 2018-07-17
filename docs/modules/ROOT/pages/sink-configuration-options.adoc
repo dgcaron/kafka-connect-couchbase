@@ -1,24 +1,25 @@
+:idprefix:
+:idseparator: -
+
 Reference of the source connector options.
 
-[[database]]
-Database
-~~~~~~~~
+== Database
 
-`connection.cluster_address`
+=== `connection.cluster_address`
 
 Couchbase Cluster addresses to listen (use comma to specify several).
 
 * Type: list
 * Importance: high
 
-`connection.bucket`
+=== `connection.bucket`
 
 Couchbase bucket name.
 
 * Type: string
 * Importance: high
 
-`connection.username`
+=== `connection.username`
 
 Couchbase username for Couchbase Server 5.0 and later.
 
@@ -26,7 +27,7 @@ Couchbase username for Couchbase Server 5.0 and later.
 * Importance: high
 * Default: the bucket name specified by `connection.bucket`
 
-`connection.password`
+=== `connection.password`
 
 Couchbase password. For Couchbase Server versions prior to 5.0 this is
 the bucket password. For versions 5.0 and later, this is the password
@@ -36,14 +37,14 @@ associated with `connection.username`.
 * Importance: low
 * Default: `""`
 
-`connection.timeout.ms`
+=== `connection.timeout.ms`
 
 Connection timeout in milliseconds.
 
 * Type: long
 * Importance: low
 
-`connection.ssl.enabled`
+=== `connection.ssl.enabled`
 
 Use SSL to connect to Couchbase. This feature only available in
 Couchbase Enterprise.
@@ -54,14 +55,14 @@ Couchbase Enterprise.
 * Dependents: `connection.ssl.keystore.location`,
 `connection.ssl.keystore.password`
 
-`connection.ssl.keystore.location`
+=== `connection.ssl.keystore.location`
 
 The location of the key store file.
 
 * Type: string
 * Importance: low
 
-`connection.ssl.keystore.password`
+=== `connection.ssl.keystore.password`
 
 The password of the private key in the key store file.
 
@@ -69,17 +70,39 @@ The password of the private key in the key store file.
 * Importance: low
 * Default: `""`
 
-`couchbase.document.id`
+=== `couchbase.document.id`
 
-An optional JSON Pointer specifying a document field to use as the
-Couchbase document ID.
+Optionally set the Couchbase document ID from fields of the message body.
+The value is a format string with a placeholder for each field to include
+in the ID. A placeholder looks like `${/path/to/field}` where the path
+is specified as a JSON pointer.
 
+For backwards compatibility, a format string without placeholders
+is interpreted as a single JSON pointer.
+
+The examples below assume the following sample document content:
+[source,json]
+{
+  "id": 123,
+  "metadata": {
+    "type": "widget"
+  }
+}
+
+* Example values:
+
+** `${/id}` -> 123
+** `invoice::${/id}` -> invoice::123
+** `${/metadata/type}::${/id}` -> widget::123
+** `/id` -> 123 (deprecated, use `${/id}` instead)
+
+* Since: 3.3.1 (*Uncommitted*; API may change in a patch release)
 * Type: string
 * Importance: low
 * Default: `""`
 * Dependents: `couchbase.remove.document.id`
 
-`couchbase.remove.document.id`
+=== `couchbase.remove.document.id`
 
 Controls whether the ID field is removed from the document when
 `couchbase.document.id` is specified.
@@ -88,7 +111,7 @@ Controls whether the ID field is removed from the document when
 * Importance: low
 * Default: `false`
 
-`couchbase.durability.persist_to`
+=== `couchbase.durability.persist_to`
 
 Optionally specify Couchbase persistence requirements for a write to be
 considered successful. If the requested requirements cannot be met (due
@@ -110,7 +133,7 @@ replicas).
 * Importance: low
 * Default: `"NONE"`
 
-`couchbase.durability.replicate_to`
+=== `couchbase.durability.replicate_to`
 
 Optionally specify Couchbase replication requirements for a write to be
 considered successful. If the requested requirements cannot be met (due
@@ -128,7 +151,7 @@ terminate.
 * Importance: low
 * Default: `"NONE"`
 
-`couchbase.log_redaction`
+=== `couchbase.log_redaction`
 
 Optionally tag sensitive values in the log output for later redaction.
 
@@ -142,7 +165,7 @@ Optionally tag sensitive values in the log output for later redaction.
 * Importance: low
 * Default: `"NONE"`
 
-`couchbase.forceIPv4`
+=== `couchbase.forceIPv4`
 
 In a network environment that supports both IPv4 and IPv6, setting this property
 to `true` will force the use of IPv4 when resolving Couchbase Server hostnames.
@@ -152,14 +175,21 @@ to `true` will force the use of IPv4 when resolving Couchbase Server hostnames.
 * Importance: low
 * Default: `false`
 
+=== `couchbase.document.expiration`
 
-*Parent topic:* link:../../connectors/kafka-3.2/kafka-intro.html[Kafka
-Connector 3.2]
+Optionally specify a time-to-live for documents written to Couchbase.
+If present, the value must be an integer followed by a time unit.
+(`s` = seconds, `m` = minutes, `h` = hours, `d` = days). Example value: `30m`.
+
+* Since: 3.3.1 (*Uncommitted*; API may change in a patch release)
+* Type: string
+* Importance: low
+* Default: `""` (documents will not expire)
+
+*Parent topic:* link:kafka-intro.html[Kafka Connector]
 
 *Previous topic:*
-link:../../connectors/kafka-3.2/source-configuration-options.html[Source
-Configuration Options]
+link:source-configuration-options.html[Source Configuration Options]
 
 *Next topic:*
-link:../../connectors/kafka-3.2/streams-sample.html[Couchbase Sample
-with Kafka Streams]
+link:streams-sample.html[Couchbase Sample with Kafka Streams]

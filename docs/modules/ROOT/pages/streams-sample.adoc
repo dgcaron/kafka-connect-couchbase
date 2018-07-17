@@ -1,8 +1,9 @@
+:idprefix:
+:idseparator: -
+
 Sample application which uses Couchbase connector with Kafka Streams.
 
-[[prerequisites]]
-Prerequisites
-~~~~~~~~~~~~~
+== Prerequisites
 
 This example demonstrates how to build a data pipeline using Kafka to
 move data from Couchbase Server to a MySQL database. It assumes a
@@ -80,9 +81,7 @@ consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.Monitor
 producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor
 ----
 
-[[code-overview]]
-Code Overview
-~~~~~~~~~~~~~
+== Code Overview
 
 The full code of this sample is accessible in the connector repository
 at
@@ -271,9 +270,7 @@ Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 
 The last step is to execute the whole pipeline.
 
-[[running]]
-Running
-~~~~~~~
+== Running
 
 We start by setting up the connector to relay the bucket contents into
 the Kafka topic `streaming-topic-beer-sample`. It could be done either
@@ -325,12 +322,9 @@ $ java -cp ./target/test-classes:$(mvn dependency:build-classpath | grep ^/) \
 
 The records will start filling the `beers` and `breweries` tables.
 
-*Parent topic:* link:../../connectors/kafka-3.2/kafka-intro.html[Kafka
-Connector 3.2]
+*Parent topic:* link:kafka-intro.html[Kafka Connector]
 
 *Previous topic:*
-link:../../connectors/kafka-3.2/sink-configuration-options.html[Sink
-Configuration Options]
+link:sink-configuration-options.html[Sink Configuration Options]
 
-*Next topic:* link:../../connectors/kafka-3.2/release-notes.html[Release
-Notes]
+*Next topic:* link:release-notes.html[Release Notes]
