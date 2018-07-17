@@ -10,6 +10,7 @@ import com.couchbase.client.java.subdoc.AsyncMutateInBuilder;
 import com.couchbase.client.java.subdoc.DocumentFragment;
 import com.couchbase.client.java.subdoc.SubdocOptionsBuilder;
 import com.couchbase.connect.kafka.util.JsonBinaryDocument;
+import org.apache.avro.data.Json;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,13 +63,17 @@ public class SubDocumentWriterTest {
     }
 
     private Completable write(JsonObject object, SubDocumentMode mode){
-        return write(object,mode, emptyResult);
+        return write(object,mode,path, false, emptyResult);
     }
 
-    private Completable write(JsonObject object, SubDocumentMode mode, Observable<DocumentFragment<Mutation>> result){
+    private Completable write(JsonObject object, String path, boolean extractPath, SubDocumentMode mode){
+        return write(object,mode, path, extractPath, emptyResult);
+    }
+
+    private Completable write(JsonObject object, SubDocumentMode mode, String path,  boolean extractPath, Observable<DocumentFragment<Mutation>> result){
         Mockito.when(mutateInBuilder.execute(Mockito.any(PersistTo.class),Mockito.any(ReplicateTo.class))).thenReturn(result);
 
-        writer = new SubDocumentWriter(mode,path,true,true);
+        writer = new SubDocumentWriter(mode,path,extractPath, true,true);
 
         JsonBinaryDocument document = null;
         if(object != null){
@@ -213,6 +218,24 @@ public class SubDocumentWriterTest {
 
         verify(bucket).mutateIn(mutateInArg.capture());
         verify(mutateInBuilder).arrayAddUnique(Mockito.eq(path), Mockito.eq(object), Mockito.any(SubdocOptionsBuilder.class));
+
+        r.await();
+    }
+
+    @Test
+    public void extractsPathFromDocument() {
+        JsonObject object = JsonObject.create();
+        object.put("path","leaf");
+
+        JsonObject result = JsonObject.create();
+
+        Mockito.when(mutateInBuilder.arrayAddUnique(Mockito.any(String.class), Mockito.any(JsonObject.class), Mockito.any(SubdocOptionsBuilder.class)))
+                .thenReturn(mutateInBuilder);
+
+        Completable r = write(object,  "/path", true, SubDocumentMode.ARRAY_ADD_UNIQUE);
+
+        verify(bucket).mutateIn(mutateInArg.capture());
+        verify(mutateInBuilder).arrayAddUnique(Mockito.eq(path), Mockito.eq(result), Mockito.any(SubdocOptionsBuilder.class));
 
         r.await();
     }
