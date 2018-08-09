@@ -29,12 +29,12 @@ import com.couchbase.client.java.env.CouchbaseEnvironment;
 import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
 import com.couchbase.client.java.error.DocumentDoesNotExistException;
 import com.couchbase.client.java.transcoder.Transcoder;
-import com.couchbase.client.java.util.retry.RetryBuilder;
-import com.couchbase.connect.kafka.sink.*;
-import com.couchbase.connect.kafka.util.DocumentIdExtractor;
-import com.couchbase.connect.kafka.util.JsonBinaryDocument;
-import com.couchbase.connect.kafka.util.JsonBinaryTranscoder;
-import com.couchbase.connect.kafka.util.Version;
+import com.couchbase.connect.kafka.sink.DocumentMode;
+import com.couchbase.connect.kafka.sink.N1qlMode;
+import com.couchbase.connect.kafka.sink.N1qlWriter;
+import com.couchbase.connect.kafka.sink.SubDocumentMode;
+import com.couchbase.connect.kafka.sink.SubDocumentWriter;
+import com.couchbase.connect.kafka.util.*;
 import com.couchbase.connect.kafka.util.config.DurationParser;
 import com.couchbase.connect.kafka.util.config.Password;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -156,7 +156,7 @@ public class CouchbaseSinkTask extends SinkTask {
                 createPaths = config.getBoolean(CouchbaseSinkConnectorConfig.SUBDOCUMENT_CREATEPATH_CONFIG);
                 createDocuments = config.getBoolean(CouchbaseSinkConnectorConfig.SUBDOCUMENT_CREATEDOCUMENT_CONFIG);
 
-                subDocumentWriter = new SubDocumentWriter(subDocumentMode, path, createPaths, createDocuments);
+                subDocumentWriter = new SubDocumentWriter(subDocumentMode, path, path.startsWith("/"), createPaths, createDocuments);
                 break;
             }
             case N1QL: {
@@ -269,7 +269,7 @@ public class CouchbaseSinkTask extends SinkTask {
                 return documentIdExtractor.extractDocumentId(valueAsJsonBytes, getAbsoluteExpirySeconds());
             }
 
-        } catch (DocumentIdExtractor.DocumentIdNotFoundException e) {
+        } catch (DocumentPathExtractor.DocumentPathNotFoundException e) {
             defaultId = documentIdFromKafkaMetadata(record);
             LOGGER.warn(e.getMessage() + "; using fallback ID '{}'", defaultId);
 
