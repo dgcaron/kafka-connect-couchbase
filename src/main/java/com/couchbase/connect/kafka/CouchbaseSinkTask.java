@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Completable;
 import rx.Observable;
+import rx.functions.Action4;
 import rx.functions.Func1;
 
 import java.io.IOException;
@@ -211,6 +212,12 @@ public class CouchbaseSinkTask extends SinkTask {
                                 .anyOf(RuntimeException.class)
                                 .delay(Delay.exponential(TimeUnit.SECONDS, 5))
                                 .max(5)
+                                .doOnRetry(new Action4<Integer, Throwable, Long, TimeUnit>() {
+                                    @Override
+                                    public void call(Integer integer, Throwable throwable, Long aLong, TimeUnit timeUnit) {
+                                        LOGGER.error(throwable.getMessage(),throwable);
+                                    }
+                                })
                                 .build())
 
                 .toCompletable().await();
