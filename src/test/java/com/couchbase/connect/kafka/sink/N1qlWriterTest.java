@@ -147,7 +147,10 @@ public class N1qlWriterTest {
 
     @Test
     public void generateStatementWithConditionAndStaticValueAtEnd() {
-        JsonObject object = JsonObject.empty().put("test", "string");
+        JsonObject object = JsonObject.empty()
+                .put("test", "string")
+                .put("documentType","option")
+                .put("styleNumber","123");
 
         List<String> fields = new ArrayList<String>();
         fields.add("styleNumber");
@@ -165,7 +168,10 @@ public class N1qlWriterTest {
 
     @Test
     public void generateStatementWithConditionAndStaticValueAtStart() {
-        JsonObject object = JsonObject.empty().put("test", "string");
+        JsonObject object = JsonObject.empty()
+                .put("test", "string")
+                .put("documentType","option")
+                .put("styleNumber","123");
 
         List<String> fields = new ArrayList<String>();
         fields.add("documentType:option");

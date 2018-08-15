@@ -15,9 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import rx.Completable;
 import rx.Observable;
+import rx.functions.Action1;
 import rx.functions.Func1;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import static com.couchbase.client.deps.io.netty.util.CharsetUtil.UTF_8;
 
@@ -105,7 +107,19 @@ public class N1qlWriter {
                     .toCompletable();
         }
         else {
-            return bucket.query(query).toCompletable();
+            return bucket.query(query)
+                    .doOnError(new Action1<Throwable>() {
+                        @Override
+                        public void call(Throwable throwable) {
+                            LOGGER.error(throwable.getMessage(),throwable);
+                        }
+                    })
+                    .flatMap(new Func1<AsyncN1qlQueryResult, Observable<N1qlMetrics>>() {
+                @Override
+                public Observable<N1qlMetrics> call(AsyncN1qlQueryResult asyncN1qlQueryResult) {
+                    return asyncN1qlQueryResult.info();
+                }
+            }).toCompletable();
         }
     }
 
@@ -134,7 +148,9 @@ public class N1qlWriter {
         statement.append(String.format("UPDATE `%s` SET ", keySpace));
 
         for (String name : values.getNames()) {
-            statement.append(String.format("`%s` = $%s, ", name, name));
+            if(!isInClauses(name)) {
+                statement.append(String.format("`%s` = $%s, ", name, name));
+            }
         }
 
         String result = statement.toString();
@@ -144,6 +160,25 @@ public class N1qlWriter {
         }
 
         return result.substring(0, result.length() - 2) + " WHERE " + condition.toString() +" RETURNING meta().id;";
+    }
+
+    private boolean isInClauses(String name) {
+        if (clause_fields == null) {
+            return false;
+        }
+
+        if (clause_fields.contains(name)) {
+            return true;
+        }
+
+        boolean isStaticDefinition = false;
+        for (String clause : clause_fields) {
+            if (clause.startsWith(name + ":")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void appendClause(StringBuilder condition, String name,  boolean last)
